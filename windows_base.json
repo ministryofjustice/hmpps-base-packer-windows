@@ -1,0 +1,115 @@
+{
+  "variables": {
+    "packer_profile": "packer",
+    "branch_name": "{{env `BRANCH_NAME`}}",
+    "env_identifier": "{{env `TARGET_ENV`}}",
+    "win_pass": "{{env `WIN_ADMIN_PASS`}}",
+    "artifact_bucket": "{{env `ZAIZI_BUCKET`}}",
+    "image_tag_version": "{{env `IMAGE_TAG_VERSION`}}"
+  },
+  "sensitive-variables": ["admin_pass"],
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "communicator": "winrm",
+      "winrm_username": "Administrator",
+      "winrm_use_ssl": false,
+      "winrm_insecure": true,
+      "region": "eu-west-2",
+      "vpc_id": "vpc-02321f288159e5d0e",
+      "subnet_id": "subnet-00982fba28419ac5f",
+      "iam_instance_profile": "tf-eu-west-2-hmpps-eng-{{user `env_identifier`}}-jenkins-ec2-slave-role-instance-profile",
+      "temporary_security_group_source_cidr": "10.0.0.0/8",
+      "user_data_file": "scripts/Windows/Base/ConfigureWinRM.txt",
+      "source_ami_filter": {
+        "filters": {
+          "description": "Microsoft Windows Server 2012 R2 RTM 64-bit Locale English AMI provided by Amazon"
+        },
+        "owners": ["amazon"],
+        "most_recent": true
+      },
+      "instance_type": "t2.large",
+      "ami_regions": ["eu-west-2"],
+      "ami_users": [
+        "563502482979",
+        "723123699647",
+        "895523100917",
+        "077643444046",
+        "431912413968",
+        "645753425509",
+        "479759138745",
+        "349354156492",
+        "130975965028",
+        "716683748953",
+        "010587221707",
+        "050243167760",
+        "205048117103",
+        "728765553488",
+        "330914586320",
+        "130847504577",
+        "434401102446",
+        "766455809178"
+      ],
+      "ami_name": "HMPPS Windows Server Base {{user `branch_name`}} {{timestamp}}",
+      "tags": {
+        "OS_Version": "Windows Server 2012 R2 RTM",
+        "Base_AMI_Name": "{{ .SourceAMIName }}",
+        "Base_AMI_ID": "{{ .SourceAMI }}",
+        "Name": "HMPPS Windows Server Base {{user `branch_name`}} {{timestamp}}",
+        "Git_Branch": "{{user `branch_name`}}",
+        "image_tag_version": "{{user `image_tag_version`}}",
+        "source-code": "https://github.com/ministryofjustice/hmpps-base-packer"
+      },
+      "run_volume_tags": {
+        "OS_Version": "Windows Server 2012 R2 RTM",
+        "Base_AMI_Name": "{{ .SourceAMIName }}",
+        "Base_AMI_ID": "{{ .SourceAMI }}",
+        "Name": "HMPPS Windows Server Base {{user `branch_name`}} {{timestamp}}",
+        "Git_Branch": "{{user `branch_name`}}",
+        "image_tag_version": "{{user `image_tag_version`}}",
+        "source-code": "https://github.com/ministryofjustice/hmpps-base-packer"
+      }
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "powershell",
+      "script": "scripts/Windows/Base/Requirements.ps1"
+    },
+    {
+      "type": "powershell",
+      "script": "scripts/Windows/Base/DisableIESecurity.ps1"
+    },
+    {
+      "type": "powershell",
+      "script": "scripts/Windows/Base/DisableUAC.ps1"
+    },
+    {
+      "type": "powershell",
+      "script": "scripts/Windows/Base/InstallOpenSSH.ps1",
+      "environment_vars": ["ARTIFACT_BUCKET={{user `artifact_bucket`}}"]
+    },
+    {
+      "type": "powershell",
+      "script": "scripts/Windows/Base/YamlSupport.ps1",
+      "environment_vars": ["ARTIFACT_BUCKET={{user `artifact_bucket`}}"]
+    },
+    {
+      "type": "file",
+      "source": "scripts/Windows/Tasks/ConfigureSSHUsers.ps1",
+      "destination": "C:\\ProgramData\\ConfigureSSHUsers.ps1"
+    },
+    {
+      "type": "powershell",
+      "script": "scripts/Windows/Tasks/InstallConfigureUserTask.ps1"
+    },
+    {
+      "type": "powershell",
+      "script": "scripts/Windows/Base/ManageAdminPassword.ps1",
+      "environment_vars": [
+        "TARGET_ENV={{user `env_identifier`}}",
+        "WIN_ADMIN_PASS={{user `win_pass`}}"
+      ]
+    }
+  ]
+}

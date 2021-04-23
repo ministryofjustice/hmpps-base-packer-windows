@@ -3,7 +3,8 @@
     "packer_profile": "packer",
     "branch_name": "{{env `BRANCH_NAME`}}",
     "admin_pass": "{{env `WIN_ADMIN_PASS`}}",
-    "image_tag_version": "{{env `IMAGE_TAG_VERSION`}}"
+    "image_tag_version": "{{env `IMAGE_TAG_VERSION`}}",
+    "codebuild": "{{env `CODEBUILD`}}"
   },
   "builders": [
     {
@@ -16,7 +17,7 @@
       "region": "eu-west-2",
       "vpc_id": "vpc-02321f288159e5d0e",
       "subnet_id": "subnet-00982fba28419ac5f",
-      "temporary_security_group_source_cidr": "10.0.0.0/8",
+      "temporary_security_group_source_cidrs": [ "10.0.0.0/8" ],
       "source_ami_filter": {
         "filters": {
           "virtualization-type": "hvm",
@@ -30,10 +31,13 @@
       "instance_type": "t2.large",
       "ami_regions": ["eu-west-2"],
       "ami_users": [
-        "563502482979",
         "723123699647",
-        "895523100917",
-        "077643444046",
+        "529698415668",
+        "172219029581",
+        "377957503799",
+        "097456858629",
+        "964150688482",
+        "787475932003",
         "431912413968",
         "645753425509",
         "479759138745",
@@ -46,8 +50,8 @@
         "728765553488",
         "330914586320",
         "130847504577",
-        "434401102446",
-        "766455809178"
+        "895523100917",
+        "077643444046"
       ],
       "launch_block_device_mappings": [
         {
@@ -71,7 +75,8 @@
         "Name": "HMPPS MIS NART BFS Windows Server {{user `branch_name`}} {{timestamp}}",
         "Git_Branch": "{{user `branch_name`}}",
         "image_tag_version": "{{user `image_tag_version`}}",
-        "source-code": "https://github.com/ministryofjustice/hmpps-base-packer"
+        "source-code": "https://github.com/ministryofjustice/hmpps-base-packer",
+        "Codebuild": "{{user `codebuild`}}"
       },
       "run_volume_tags": {
         "OS_Version": "Windows Server 2012 R2 RTM",
@@ -80,7 +85,8 @@
         "Name": "HMPPS MIS NART BFS Windows Server {{user `branch_name`}} {{timestamp}}",
         "Git_Branch": "{{user `branch_name`}}",
         "image_tag_version": "{{user `image_tag_version`}}",
-        "source-code": "https://github.com/ministryofjustice/hmpps-base-packer"
+        "source-code": "https://github.com/ministryofjustice/hmpps-base-packer",
+        "Codebuild": "{{user `codebuild`}}"
       }
     }
   ],

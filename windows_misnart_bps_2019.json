@@ -3,7 +3,8 @@
     "packer_profile": "packer",
     "branch_name": "{{env `BRANCH_NAME`}}",
     "admin_pass": "{{env `WIN_ADMIN_PASS`}}",
-    "jenkins_pass": "{{env `WIN_JENKINS_PASS`}}",
+    "artifact_bucket": "{{env `ZAIZI_BUCKET`}}",
+    "target_env":  "{{env `TARGET_ENV`}}",
     "image_tag_version": "{{env `IMAGE_TAG_VERSION`}}",
     "codebuild": "{{env `CODEBUILD`}}"
   },
@@ -19,17 +20,19 @@
       "vpc_id": "vpc-02321f288159e5d0e",
       "subnet_id": "subnet-00982fba28419ac5f",
       "temporary_security_group_source_cidrs": [ "10.0.0.0/8" ],
+      "user_data_file": "scripts/Windows/Base/ConfigureWinRM2019.txt",
+      "iam_instance_profile": "tf-eu-west-2-hmpps-eng-{{user `target_env`}}-jenkins-ec2-agent-role-instance-profile",
       "source_ami_filter": {
         "filters": {
           "virtualization-type": "hvm",
           "architecture": "x86_64",
-          "name": "HMPPS Windows Server Base {{user `branch_name`}}*",
+          "name": "HMPPS MIS NART Windows Server 2019 Base {{user `branch_name`}}*",
           "root-device-type": "ebs"
         },
         "owners": ["895523100917"],
         "most_recent": true
       },
-      "instance_type": "t2.large",
+      "instance_type": "t3.xlarge",
       "ami_regions": ["eu-west-2"],
       "ami_users": [
         "723123699647",
@@ -54,22 +57,36 @@
         "895523100917",
         "077643444046"
       ],
-      "ami_name": "HMPPS Jenkins Agent Windows Server {{user `branch_name`}} {{timestamp}}",
+      "launch_block_device_mappings": [
+        {
+          "device_name": "/dev/sda1",
+          "volume_size": 60,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        },
+        {
+          "device_name": "/dev/xvdb",
+          "volume_size": 300,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        }
+      ],
+      "ami_name": "HMPPS MIS NART BPS Windows Server 2019 {{user `branch_name`}} {{timestamp}}",
       "tags": {
-        "OS_Version": "Windows Server 2012 R2 RTM",
+        "OS_Version": "Windows Server 2019 DataCenter",
         "Base_AMI_Name": "{{ .SourceAMIName }}",
         "Base_AMI_ID": "{{ .SourceAMI }}",
-        "Name": "HMPPS Jenkins Agent Windows Server {{user `branch_name`}} {{timestamp}}",
+        "Name": "HMPPS MIS NART BPS Windows Server 2019 {{user `branch_name`}} {{timestamp}}",
         "Git_Branch": "{{user `branch_name`}}",
         "image_tag_version": "{{user `image_tag_version`}}",
         "source-code": "https://github.com/ministryofjustice/hmpps-base-packer",
         "Codebuild": "{{user `codebuild`}}"
       },
       "run_volume_tags": {
-        "OS_Version": "Windows Server 2012 R2 RTM",
+        "OS_Version": "Windows Server 2019 DataCenter",
         "Base_AMI_Name": "{{ .SourceAMIName }}",
         "Base_AMI_ID": "{{ .SourceAMI }}",
-        "Name": "HMPPS Jenkins Agent Windows Server {{user `branch_name`}} {{timestamp}}",
+        "Name": "HMPPS MIS NART BPS Windows Server 2019 {{user `branch_name`}} {{timestamp}}",
         "Git_Branch": "{{user `branch_name`}}",
         "image_tag_version": "{{user `image_tag_version`}}",
         "source-code": "https://github.com/ministryofjustice/hmpps-base-packer",
@@ -79,72 +96,18 @@
   ],
   "provisioners": [
     {
-      "type": "file",
-      "source": "files/firefox.ini",
-      "destination": "c:\\temp\\firefox.ini"
+      "script": "scripts/Windows/All/2019/UpdateLaunchConfig.ps1",
+      "type": "powershell",
+      "environment_vars": [ "WIN_ADMIN_PASS={{user `admin_pass`}}" ]
     },
     {
       "type": "powershell",
-      "script": "scripts/Windows/JenkinsAgent/InstallGit.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/JenkinsAgent/SoftwareRequirements.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/JenkinsAgent/InstallJDK8.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/JenkinsAgent/InstallMaven.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/JenkinsAgent/InstallFirefox.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/JenkinsAgent/InstallChromeEnterprise.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/JenkinsAgent/ManageJenkinsUser.ps1",
-      "environment_vars": [
-        "TARGET_ENV={{user `env_identifier`}}",
-        "JENKINS_PASS={{user `jenkins_pass`}}"
+      "inline": [
+        "C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Scripts\\SendEventLogs.ps1 -Schedule",
+        "C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Scripts\\SendWindowsIsReady.ps1 -Schedule",
+        "C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Scripts\\InitializeInstance.ps1 -SchedulePerBoot",
+        "C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Scripts\\SysprepInstance.ps1 -NoShutdown"
       ]
-    },
-    {
-      "type": "file",
-      "source": "files/swarm-client-3.14.jar",
-      "destination": "c:\\JenkinsHome\\swarm-client.jar"
-    },
-    {
-      "type": "file",
-      "source": "files/mozilla.cfg",
-      "destination": "C:\\Program Files\\Mozilla Firefox\\mozilla.cfg"
-
-    },
-    {
-      "type": "file",
-      "source": "files/autoconfig.js",
-      "destination": "C:\\Program Files\\Mozilla Firefox\\defaults\\pref\\autoconfig.js"
-
-    },
-    {
-      "type": "file",
-      "source": "files/Override.ini",
-      "destination": "C:\\Program Files\\Mozilla Firefox\\browser\\Override.ini"
-
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/All/ReenableUserData.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/All/CleanupTemp.ps1"
     }
   ]
 }

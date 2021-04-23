@@ -2,38 +2,46 @@
   "variables": {
     "packer_profile": "packer",
     "branch_name": "{{env `BRANCH_NAME`}}",
-    "env_identifier": "{{env `TARGET_ENV`}}",
     "admin_pass": "{{env `WIN_ADMIN_PASS`}}",
+    "mis_user": "{{env `WIN_MIS_USER`}}",
+    "mis_password": "{{env `WIN_MIS_PASS`}}",
+    "bobj_user": "{{env `WIN_BOBJ_USER`}}",
+    "bobj_pass": "{{env `WIN_BOBJ_PASS`}}",
     "artifact_bucket": "{{env `ZAIZI_BUCKET`}}",
+    "target_env": "{{env `TARGET_ENV`}}",
     "image_tag_version": "{{env `IMAGE_TAG_VERSION`}}",
     "codebuild": "{{env `CODEBUILD`}}"
   },
-  "sensitive-variables": ["admin_pass"],
   "builders": [
     {
-      "ami_name": "HMPPS Windows Server Base {{user `branch_name`}} {{timestamp}}",
-      "ami_regions": [
-        "eu-west-2"
-      ],
       "type": "amazon-ebs",
       "communicator": "winrm",
       "winrm_username": "Administrator",
+      "winrm_password": "{{user `admin_pass`}}",
       "winrm_use_ssl": false,
       "winrm_insecure": true,
       "region": "eu-west-2",
       "vpc_id": "vpc-02321f288159e5d0e",
       "subnet_id": "subnet-00982fba28419ac5f",
-      "iam_instance_profile": "tf-eu-west-2-hmpps-eng-{{user `env_identifier`}}-jenkins-ec2-agent-role-instance-profile",
       "temporary_security_group_source_cidrs": [ "10.0.0.0/8" ],
-      "user_data_file": "scripts/Windows/Base/ConfigureWinRM.txt",
+      "user_data_file": "scripts/Windows/Base/ConfigureWinRM2019.txt",
+      "iam_instance_profile": "tf-eu-west-2-hmpps-eng-{{user `target_env`}}-jenkins-ec2-agent-role-instance-profile",
       "source_ami_filter": {
         "filters": {
-          "description": "Microsoft Windows Server 2012 R2 RTM 64-bit Locale English AMI provided by Amazon"
+          "virtualization-type": "hvm",
+          "architecture": "x86_64",
+          "name": "HMPPS MIS NART Windows Server 2019 Base {{user `branch_name`}}*",
+          "root-device-type": "ebs"
         },
-        "owners": ["amazon"],
+        "owners": [
+          "895523100917"
+        ],
         "most_recent": true
       },
-      "instance_type": "t2.large",
+      "instance_type": "t3.xlarge",
+      "ami_regions": [
+        "eu-west-2"
+      ],
       "ami_users": [
         "723123699647",
         "529698415668",
@@ -57,21 +65,36 @@
         "895523100917",
         "077643444046"
       ],
+      "launch_block_device_mappings": [
+        {
+          "device_name": "/dev/sda1",
+          "volume_size": 60,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        },
+        {
+          "device_name": "/dev/xvdb",
+          "volume_size": 50,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        }
+      ],
+      "ami_name": "HMPPS MIS NART DIS Windows Server 2019 {{user `branch_name`}} {{timestamp}}",
       "tags": {
-        "OS_Version": "Windows Server 2012 R2 RTM",
+        "OS_Version": "Windows Server 2019 DataCenter",
         "Base_AMI_Name": "{{ .SourceAMIName }}",
         "Base_AMI_ID": "{{ .SourceAMI }}",
-        "Name": "HMPPS Windows Server Base {{user `branch_name`}} {{timestamp}}",
+        "Name": "HMPPS MIS NART DIS Windows Server 2019 {{user `branch_name`}} {{timestamp}}",
         "Git_Branch": "{{user `branch_name`}}",
         "image_tag_version": "{{user `image_tag_version`}}",
         "source-code": "https://github.com/ministryofjustice/hmpps-base-packer",
         "Codebuild": "{{user `codebuild`}}"
       },
       "run_volume_tags": {
-        "OS_Version": "Windows Server 2012 R2 RTM",
+        "OS_Version": "Windows Server 2019 DataCenter",
         "Base_AMI_Name": "{{ .SourceAMIName }}",
         "Base_AMI_ID": "{{ .SourceAMI }}",
-        "Name": "HMPPS Windows Server Base {{user `branch_name`}} {{timestamp}}",
+        "Name": "HMPPS MIS NART DIS Windows Server {{user `branch_name`}} {{timestamp}}",
         "Git_Branch": "{{user `branch_name`}}",
         "image_tag_version": "{{user `image_tag_version`}}",
         "source-code": "https://github.com/ministryofjustice/hmpps-base-packer",
@@ -80,44 +103,6 @@
     }
   ],
   "provisioners": [
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/Base/Requirements.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/Base/DisableIESecurity.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/Base/DisableUAC.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/Base/InstallOpenSSH.ps1",
-      "environment_vars": ["ARTIFACT_BUCKET={{user `artifact_bucket`}}"]
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/Base/YamlSupport.ps1",
-      "environment_vars": ["ARTIFACT_BUCKET={{user `artifact_bucket`}}"]
-    },
-    {
-      "type": "file",
-      "source": "scripts/Windows/Tasks/ConfigureSSHUsers.ps1",
-      "destination": "C:\\ProgramData\\ConfigureSSHUsers.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/Tasks/InstallConfigureUserTask.ps1"
-    },
-    {
-      "type": "powershell",
-      "script": "scripts/Windows/Base/ManageAdminPassword.ps1",
-      "environment_vars": [
-        "TARGET_ENV={{user `env_identifier`}}",
-        "WIN_ADMIN_PASS={{user `admin_pass`}}"
-      ]
-    }
+
   ]
 }
